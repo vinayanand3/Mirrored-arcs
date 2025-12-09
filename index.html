@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js Particle Flow - Low Density Core</title>
+    <title>Three.js Particle Flow - Golden Finer Core</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         canvas { display: block; }
@@ -66,7 +66,7 @@
         composer.addPass(bloomPass);
 
 
-        // --- SHARED MATERIAL ---
+        // --- SHARED MATERIAL BASE ---
         const particleMaterial = new THREE.PointsMaterial({
             color: 0xffffff,
             size: 0.15,
@@ -77,19 +77,22 @@
         });
 
 
-        // --- OBJECT 1: CENTRAL SPHERE (LOWER DENSITY) ---
-        // MODIFIED: Reduced segments from 64,64 to 32,32. 
-        // This makes the grid structure visible and less "solid white".
+        // --- OBJECT 1: CENTRAL SPHERE (GOLDEN, FINER, LOWER INTENSITY) ---
         const sphereGeo = new THREE.SphereGeometry(2.5, 32, 32);
         
         const sphereMat = particleMaterial.clone();
-        sphereMat.size = 0.08; // Slightly larger individual dots for clarity
-        sphereMat.opacity = 0.6; 
+        // MODIFIED: Change color to golden orange
+        sphereMat.color.setHex(0xffaa00); 
+        // MODIFIED: Significantly reduced size for finer particles (was 0.08)
+        sphereMat.size = 0.04; 
+        // MODIFIED: Reduced opacity further to lower intensity (was 0.6)
+        sphereMat.opacity = 0.35; 
+        
         const centralSphere = new THREE.Points(sphereGeo, sphereMat);
         scene.add(centralSphere);
 
 
-        // --- OBJECT 2: THE MAIN FLOWING ARCS ---
+        // --- OBJECT 2: THE MAIN FLOWING ARCS (WHITE) ---
         const arcParticleCount = 12000;
         const arcGeo = new THREE.BufferGeometry();
         const arcPositions = new Float32Array(arcParticleCount * 3);
@@ -106,11 +109,12 @@
         }
 
         arcGeo.setAttribute('position', new THREE.BufferAttribute(arcPositions, 3));
+        // Use the shared base material (white, size 0.15, opacity 0.35)
         const arcSystem = new THREE.Points(arcGeo, particleMaterial);
         scene.add(arcSystem);
 
 
-        // --- OBJECT 3: THE OUTER CLOUD (FAINTER) ---
+        // --- OBJECT 3: THE OUTER CLOUD (FAINTER WHITE) ---
         const cloudParticleCount = 5000;
         const cloudGeo = new THREE.BufferGeometry();
         const cloudPositions = new Float32Array(cloudParticleCount * 3);
