@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js Particle Flow - Golden Finer Core</title>
+    <title>Three.js Particle Flow - Core Avoidance</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         canvas { display: block; }
@@ -77,15 +77,11 @@
         });
 
 
-        // --- OBJECT 1: CENTRAL SPHERE (GOLDEN, FINER, LOWER INTENSITY) ---
+        // --- OBJECT 1: CENTRAL SPHERE (GOLDEN, FINE, LOW INTENSITY) ---
         const sphereGeo = new THREE.SphereGeometry(2.5, 32, 32);
-        
         const sphereMat = particleMaterial.clone();
-        // MODIFIED: Change color to golden orange
         sphereMat.color.setHex(0xffaa00); 
-        // MODIFIED: Significantly reduced size for finer particles (was 0.08)
         sphereMat.size = 0.04; 
-        // MODIFIED: Reduced opacity further to lower intensity (was 0.6)
         sphereMat.opacity = 0.35; 
         
         const centralSphere = new THREE.Points(sphereGeo, sphereMat);
@@ -93,7 +89,7 @@
 
 
         // --- OBJECT 2: THE MAIN FLOWING ARCS (WHITE) ---
-        const arcParticleCount = 12000;
+        const arcParticleCount = 14000; // Slight bump in count for smoother streams
         const arcGeo = new THREE.BufferGeometry();
         const arcPositions = new Float32Array(arcParticleCount * 3);
         const arcOffsets = new Float32Array(arcParticleCount * 3);
@@ -109,7 +105,6 @@
         }
 
         arcGeo.setAttribute('position', new THREE.BufferAttribute(arcPositions, 3));
-        // Use the shared base material (white, size 0.15, opacity 0.35)
         const arcSystem = new THREE.Points(arcGeo, particleMaterial);
         scene.add(arcSystem);
 
@@ -159,17 +154,33 @@
                 let angle = (flowProgress * Math.PI * 2) - Math.PI;
 
                 // --- THE MATH SHAPING THE CURVES ---
-                const baseRadius = 8 + Math.cos(angle) * 10;
-                const tubeThickness = 1.5 + Math.abs(Math.sin(angle)) * 3;
+                
+                // 1. Base Radius (Horizontal spread)
+                // We stretch it out a bit more on X to make the "Eye" wider
+                const baseRadius = 10 + Math.cos(angle) * 12;
+
+                // 2. Tube Thickness
+                const tubeThickness = 1.0 + Math.abs(Math.sin(angle)) * 2.5;
+
+                // 3. Split top and bottom
                 const mirrorSide = (i % 2 === 0) ? 1 : -1;
                 const swirlAngle = t * 2 + idxRatio * Math.PI * 4;
                 
                 let tx = Math.sin(angle) * baseRadius;
+                
+                // Tube rotation
                 let ty = Math.cos(swirlAngle) * tubeThickness * mirrorSide;
                 let tz = Math.sin(swirlAngle) * tubeThickness;
 
-                ty += Math.sin(angle * 2) * 5 * mirrorSide; 
+                // --- KEY MODIFICATION: Vertical Separation ---
+                // using Math.cos(angle * 0.5) creates a hump that is:
+                // 1.0 at center (angle=0)
+                // 0.0 at ends (angle=PI)
+                // Multiplied by mirrorSide, it pushes UP for evens, DOWN for odds.
+                // Multiplied by 5.5 to ensure it clears the 2.5 radius sphere with space.
+                ty += Math.cos(angle * 0.5) * 5.5 * mirrorSide; 
 
+                // Add small randomness
                 tx += arcOffsets[i3] * 0.5;
                 ty += arcOffsets[i3 + 1] * 0.5;
                 tz += arcOffsets[i3 + 2] * 0.5;
