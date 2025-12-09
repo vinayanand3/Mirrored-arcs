@@ -3,189 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Glowing 3D Particle Arcs</title>
+    <title>Three.js Particle Flow Replication</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
+    <div id="info">Drag to rotate the object</div>
 
-<script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
         }
-    }
-</script>
+    </script>
 
-<script type="module">
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-    // 1. Environment Setup
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x000000, 0.02); // Adds depth
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.002); // Adds a little depth fading
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 15;
-    camera.position.y = 5;
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 35);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio); // Sharpness on retina screens
-    renderer.toneMapping = THREE.ReinhardToneMapping; // Better light blending
-    document.body.appendChild(renderer.domElement);
-
-    // 2. Central Core
-    const coreGeometry = new THREE.SphereGeometry(1.5, 32, 32);
-    const coreMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0x00ffff, // Cyan core
-    });
-    const core = new THREE.Mesh(coreGeometry, coreMaterial);
-    scene.add(core);
-
-    // 3. Particle System with Mirrored Arcs
-    const particleCount = 15000;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-    const initialPositions = new Float32Array(particleCount * 3); // To store base state
-    const phases = new Float32Array(particleCount); // Random offset for animation
-    const speeds = new Float32Array(particleCount); // Individual speeds
-
-    const color = new THREE.Color();
-    const colors = [];
-
-    for (let i = 0; i < particleCount; i++) {
-        // Distribute particles randomly in a spherical area initially
-        // We will override these in the animation loop, but this initializes arrays
-        let x = (Math.random() - 0.5) * 10;
-        let y = (Math.random() - 0.5) * 10;
-        let z = (Math.random() - 0.5) * 10;
-
-        positions[i * 3] = x;
-        positions[i * 3 + 1] = y;
-        positions[i * 3 + 2] = z;
-
-        // Store initial random parameters
-        phases[i] = Math.random() * Math.PI * 2;
-        speeds[i] = 0.5 + Math.random() * 0.5;
-
-        // Color Logic: Mix of Cyan and Blue-Purple
-        if (Math.random() > 0.5) {
-            color.setHex(0x00ffff); // Cyan
-        } else {
-            color.setHex(0x5500ff); // Purple/Blue
-        }
-        colors.push(color.r, color.g, color.b);
-    }
-
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
-    const material = new THREE.PointsMaterial({
-        size: 0.15,
-        vertexColors: true, // Allow individual particle colors
-        transparent: true,
-        opacity: 0.8,
-        blending: THREE.AdditiveBlending, // Makes overlapping particles brighter
-        depthWrite: false // Essential for transparent glowing particles
-    });
-
-    const particles = new THREE.Points(geometry, material);
-    scene.add(particles);
-
-    // 4. Interaction (OrbitControls)
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.5;
-
-    // 5. Post-Processing (UnrealBloom)
-    const renderScene = new RenderPass(scene, camera);
-
-    const bloomPass = new UnrealBloomPass(
-        new THREE.Vector2(window.innerWidth, window.innerHeight),
-        1.5, 0.4, 0.85
-    );
-    bloomPass.threshold = 0.1;
-    bloomPass.strength = 1.2; // Intensity of the glow
-    bloomPass.radius = 0.5;   // Spread of the glow
-
-    const composer = new EffectComposer(renderer);
-    composer.addPass(renderScene);
-    composer.addPass(bloomPass);
-
-    // 6. Animation Logic
-    const clock = new THREE.Clock();
-
-    function animate() {
-        requestAnimationFrame(animate);
-
-        const time = clock.getElapsedTime();
-        const positions = particles.geometry.attributes.position.array;
-
-        // Calculate Particle Flow
-        for (let i = 0; i < particleCount; i++) {
-            const i3 = i * 3;
-            const phase = phases[i];
-            const speed = speeds[i];
-
-            // Create a "Toroidal" flow logic
-            // We create 2 mirrored groups based on if index is even or odd
-            const isMirror = i % 2 === 0 ? 1 : -1; 
-            
-            // t represents the particle's progress along the curve
-            const t = (time * speed * 0.2) + phase;
-
-            // Radius varies to create the "arc" shape (wider in middle, narrower at poles)
-            // Using sin(t) creates a loop, wrapping it gives the orbit
-            const tubeRadius = 6 + Math.sin(t * 3) * 2; // Dynamic width
-            
-            // Core Math for Mirrored Arcs
-            const angle = t * isMirror; // Rotate clockwise or counter-clockwise
-            
-            // Position Calculation
-            const x = Math.cos(angle) * tubeRadius;
-            const z = Math.sin(angle) * tubeRadius;
-            
-            // The Y position oscillates but twists with the angle
-            // Math.sin(t * 2) * 4 creates the vertical wave height
-            // isMirror * 2 adds a slight vertical offset between the streams
-            const y = Math.sin(t * 4 + (isMirror * Math.PI)) * 4; 
-
-            // Apply to buffer
-            positions[i3] = x;
-            positions[i3 + 1] = y;
-            positions[i3 + 2] = z;
-        }
-
-        // IMPORTANT: Flag the geometry as updated so GPU receives new positions
-        particles.geometry.attributes.position.needsUpdate = true;
-        
-        // Pulse the Core
-        const coreScale = 1 + Math.sin(time * 2) * 0.1;
-        core.scale.set(coreScale, coreScale, coreScale);
-
-        controls.update();
-        composer.render(); // Render via Composer (Bloom), not standard renderer
-    }
-
-    // Handle Window Resize
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
+        const renderer = new THREE.WebGLRenderer({ antialias: false }); // Bloom often hides aliasing anyway
         renderer.setSize(window.innerWidth, window.innerHeight);
-        composer.setSize(window.innerWidth, window.innerHeight);
-    });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
 
-    animate();
-</script>
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
 
+        // --- POST-PROCESSING (BLOOM) ---
+        const renderScene = new RenderPass(scene, camera);
+
+        // Resolution, Strength, Radius, Threshold
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.5, 0.1);
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+
+        // --- SHARED MATERIAL ---
+        // Additive blending is key for the glowing effect when particles overlap
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.15,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false, // Important so particles don't occlude each other weirdly
+        });
+
+
+        // --- OBJECT 1: CENTRAL SPHERE ---
+        // We use points instead of a solid mesh to match the reference look
+        const sphereGeo = new THREE.SphereGeometry(2.5, 64, 64);
+        const sphereMat = particleMaterial.clone();
+        sphereMat.size = 0.1; // Slightly smaller dots for the dense core
+        const centralSphere = new THREE.Points(sphereGeo, sphereMat);
+        scene.add(centralSphere);
+
+
+        // --- OBJECT 2: THE MAIN FLOWING ARCS ---
+        const arcParticleCount = 12000;
+        const arcGeo = new THREE.BufferGeometry();
+        const arcPositions = new Float32Array(arcParticleCount * 3);
+        // Store initial random offsets for each particle so they don't move uniformly
+        const arcOffsets = new Float32Array(arcParticleCount * 3);
+
+        for (let i = 0; i < arcParticleCount; i++) {
+            // Initialize positions (will be overwritten in animate loop)
+            arcPositions[i * 3] = 0;
+            arcPositions[i * 3 + 1] = 0;
+            arcPositions[i * 3 + 2] = 0;
+
+            // Random offsets for thickness and variation
+            arcOffsets[i * 3] = (Math.random() - 0.5);     // radial offset
+            arcOffsets[i * 3 + 1] = (Math.random() - 0.5); // angle offset
+            arcOffsets[i * 3 + 2] = Math.random();         // speed modifier
+        }
+
+        arcGeo.setAttribute('position', new THREE.BufferAttribute(arcPositions, 3));
+        const arcSystem = new THREE.Points(arcGeo, particleMaterial);
+        scene.add(arcSystem);
+
+
+        // --- OBJECT 3: THE OUTER CLOUD (FAINTER) ---
+        const cloudParticleCount = 5000;
+        const cloudGeo = new THREE.BufferGeometry();
+        const cloudPositions = new Float32Array(cloudParticleCount * 3);
+
+        for (let i = 0; i < cloudParticleCount; i++) {
+            // Create a large, sparse sphere of particles
+            const radius = 15 + Math.random() * 15;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+
+            cloudPositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            cloudPositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta) * 0.5; // Flatten Y slightly
+            cloudPositions[i * 3 + 2] = radius * Math.cos(phi);
+        }
+        cloudGeo.setAttribute('position', new THREE.BufferAttribute(cloudPositions, 3));
+        
+        const cloudMat = particleMaterial.clone();
+        cloudMat.size = 0.1;
+        cloudMat.opacity = 0.3; // Much fainter
+        const outerCloud = new THREE.Points(cloudGeo, cloudMat);
+        scene.add(outerCloud);
+
+
+        // --- ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            controls.update();
+
+            // --- Animate the Main Arcs ---
+            const positions = arcSystem.geometry.attributes.position.array;
+            
+            for (let i = 0; i < arcParticleCount; i++) {
+                const i3 = i * 3;
+                // Use particle index to spread them out along the flow path
+                const idxRatio = i / arcParticleCount; 
+                
+                // Base speed plus individual speed modifier
+                const t = time * 0.5 * (1 + arcOffsets[i3 + 2] * 0.2); 
+                
+                // The main flow moves along the X axis over time
+                // We wrap it using modulo to keep particles looping
+                let flowProgress = (idxRatio + t * 0.1) % 1;
+                // Map 0..1 to -PI..PI for sine/cosine usage
+                let angle = (flowProgress * Math.PI * 2) - Math.PI;
+
+                // --- THE MATH SHAPING THE CURVES ---
+                
+                // 1. Define the major radius (distance from center).
+                // It's wider at the ends (angle ~ -PI or PI) and narrow in center (angle ~ 0)
+                // cos(angle) peaks at ends.
+                const baseRadius = 8 + Math.cos(angle) * 10;
+
+                // 2. Define the tube thickness at this point.
+                // The ribbons get thinner towards the ends.
+                // sin(angle) is zero at ends, max in middle.
+                const tubeThickness = 1.5 + Math.abs(Math.sin(angle)) * 3;
+
+                // 3. Create the two distinct streams (top/bottom or mirrored across Z).
+                // We split particles based on odd/even index.
+                const mirrorSide = (i % 2 === 0) ? 1 : -1;
+                // A swirling angle that progresses with time
+                const swirlAngle = t * 2 + idxRatio * Math.PI * 4;
+                
+                // Calculate base position on the "tube"
+                let tx = Math.sin(angle) * baseRadius; // Main direction of travel roughly along X
+                let ty = Math.cos(swirlAngle) * tubeThickness * mirrorSide;
+                let tz = Math.sin(swirlAngle) * tubeThickness;
+
+                // Apply waving motion to the whole structure
+                // The Y height fluctuates based on position along the X axis (angle)
+                ty += Math.sin(angle * 2) * 5 * mirrorSide; 
+
+                // Add slight random jitter for thickness
+                tx += arcOffsets[i3] * 0.5;
+                ty += arcOffsets[i3 + 1] * 0.5;
+                tz += arcOffsets[i3 + 2] * 0.5;
+
+                positions[i3] = tx;
+                positions[i3 + 1] = ty;
+                positions[i3 + 2] = tz;
+            }
+            // Tell the GPU the positions have updated
+            arcSystem.geometry.attributes.position.needsUpdate = true;
+
+
+            // --- Animate Outer Cloud (Simple rotation) ---
+            outerCloud.rotation.y = time * 0.05;
+            outerCloud.rotation.z = time * 0.02;
+
+            // Use composer for bloom, not renderer.render
+            composer.render();
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
 </body>
 </html>
