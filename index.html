@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js Particle Flow - Reduced Glow</title>
+    <title>Three.js Particle Flow - Low Density Core</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         canvas { display: block; }
@@ -11,7 +11,7 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            color: #888; /* Dimmed text slightly */
+            color: #666; 
             font-family: sans-serif;
             pointer-events: none;
         }
@@ -48,7 +48,6 @@
         const renderer = new THREE.WebGLRenderer({ antialias: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
-        // Important for handling bright lights better
         renderer.toneMapping = THREE.ReinhardToneMapping;
         renderer.toneMappingExposure = 1.5;
         document.body.appendChild(renderer.domElement);
@@ -60,9 +59,6 @@
 
         // --- POST-PROCESSING (BLOOM) ---
         const renderScene = new RenderPass(scene, camera);
-
-        // Resolution, Strength, Radius, Threshold
-        // MODIFIED: Strength reduced from 2.0 to 1.2 to tame the overall blowout
         const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.5, 0.1);
 
         const composer = new EffectComposer(renderer);
@@ -75,21 +71,20 @@
             color: 0xffffff,
             size: 0.15,
             transparent: true,
-            // MODIFIED: Opacity significantly reduced from 0.8 to 0.35.
-            // Because of AdditiveBlending, lower opacity is needed in dense areas to prevent blown-out white highlights.
             opacity: 0.35, 
             blending: THREE.AdditiveBlending,
             depthWrite: false,
         });
 
 
-        // --- OBJECT 1: CENTRAL SPHERE ---
-        const sphereGeo = new THREE.SphereGeometry(2.5, 64, 64);
+        // --- OBJECT 1: CENTRAL SPHERE (LOWER DENSITY) ---
+        // MODIFIED: Reduced segments from 64,64 to 32,32. 
+        // This makes the grid structure visible and less "solid white".
+        const sphereGeo = new THREE.SphereGeometry(2.5, 32, 32);
+        
         const sphereMat = particleMaterial.clone();
-        // MODIFIED: Reduced size from 0.1 to 0.06 so the core isn't so solid
-        sphereMat.size = 0.06; 
-        // MODIFIED: Slightly higher opacity for core definition, but still low
-        sphereMat.opacity = 0.5; 
+        sphereMat.size = 0.08; // Slightly larger individual dots for clarity
+        sphereMat.opacity = 0.6; 
         const centralSphere = new THREE.Points(sphereGeo, sphereMat);
         scene.add(centralSphere);
 
@@ -111,7 +106,6 @@
         }
 
         arcGeo.setAttribute('position', new THREE.BufferAttribute(arcPositions, 3));
-        // Use the shared (lower opacity) material
         const arcSystem = new THREE.Points(arcGeo, particleMaterial);
         scene.add(arcSystem);
 
@@ -134,7 +128,6 @@
         
         const cloudMat = particleMaterial.clone();
         cloudMat.size = 0.1;
-        // MODIFIED: Reduced outer cloud opacity even further for contrast
         cloudMat.opacity = 0.15; 
         const outerCloud = new THREE.Points(cloudGeo, cloudMat);
         scene.add(outerCloud);
